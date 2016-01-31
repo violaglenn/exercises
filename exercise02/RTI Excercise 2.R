@@ -1,3 +1,5 @@
+require(ggplot2)
+
 #Viola here --- Using code constructed by AirSafe.com to import + QA + prelim descriptives on NTSB XML dataset
 #Full report including Git is saved here: http://www.airsafe.com/analyze/ntsb.database.html
 
@@ -47,7 +49,7 @@ ntsb.data = as.data.frame(ntsb.data)
 ntsb.data = as.data.frame(t(ntsb.data))
 rownames(ntsb.data) = NULL
 
-nstb.data.raw = ntsb.data # Raw data on standby in case of a later problem
+ntsb.data.raw = ntsb.data # Raw data on standby in case of a later problem
 
 # DATA CLEANING
 
@@ -273,14 +275,7 @@ write.csv(ntsb.data, file = "ntsb_data.csv")
 
 # SUMMARY STATISTICS
 
-print("Summary statistics based on complete download of data made 12 December 2015")
-
-paste("Total number of records - ", format(nrow(ntsb.data.raw), big.mark=","), sep="") 
-
-paste("Number of records excluded - ", nrow(ntsb.data.raw)-nrow(ntsb.data)) 
-
-paste("Number of records processed - ", format(nrow(ntsb.data), big.mark=","), sep="") 
-
+print("Summary statistics")
 
 paste("Number of records with a US location - ", format(nrow(ntsb.data[which(ntsb.data$Country=="United States"),]), big.mark=","),".", sep="")
 
@@ -388,11 +383,99 @@ sort(table(fatal.df$State.code), decreasing=TRUE)
 #Ideas:
 #Normalize fatalities/event and fatal event/event -- would be nice to do pop. w/o time constraint
 #by state, day of week, month, year
+#normalize by Total.Fatal.Injuries, Total.Serious.Injuries, Total.Minor.Injuries, Total.Uninjured
 
 #Let's look at some tabulations that may be of interest: categorical vars
 
+#Convert all character variables to factors for easier analysis
+ntsb.data.work <- as.data.frame(unclass(ntsb.data))
+#Quick first look at where we have enough data for quick reporting-- again, given time constraint
+summary(ntsb.data.work)
+attach(ntsb.data.work) 
+#Nominate: Investigation.Type (or filter by- overlaps w/ injury.severity), Aircraft.Category, Make, Amateur.Built, Number.of.Engines, Broad.Phase.of.Flight, Weather.Condition
+#Bar graphs to explore spread in these nominated variables
+#Events
+par(mfrow=c(3,3))
+sapply(ntsb.data.work[ntsb.data.work$Year>=1982, c("Investigation.Type",
+                    "Aircraft.Damage", "Aircraft.Category", "Amateur.Built", 
+                    "Number.of.Engines", "Broad.Phase.of.Flight", 
+                    "Weather.Condition")], function(x)
+                      barplot(sort(table(x), decreasing=TRUE), 
+                              col="dodgerblue", ylab="Events", 
+                              cex.names=0.7, las=2))
+detach(ntsb.data.work)
 attach(fatal.df)
 
-#Convert all character variables to factors for easier analysis
-fatal.df <- as.data.frame(unclass(fatal.df))
-summary(fatal.df)
+par(mfrow=c(3,3))
+sapply(fatal.df[fatal.df$Year>=1982, 
+                c("Investigation.Type","Year", "Month", "Weekday",  
+                  "Aircraft.Category", "Amateur.Built", "Number.of.Engines", 
+                  "Engine.Type", "Schedule", "Purpose.of.Flight", 
+                  "Broad.Phase.of.Flight", "Weather.Condition")], function(x)
+                                         barplot(sort(table(x), decreasing=TRUE), 
+                                         col="darkturquoise", ylab="Fatal Events",
+                                         cex.names=0.7, las=2)) 
+
+
+table(Investigation.Type)
+
+#Interesting: difference b/t events and fatal events in phase of flight.
+# Events: landing, take-off, cruise, maneuvering, approach
+# Fatal events: Maneuvering, cruise, takeoff, approach, climb
+
+#Let's look at them side by side -- flex some r graphing
+attach(ntsb.data.work)
+
+ggplot(data=ntsb.data.work[!is.na(Broad.Phase.of.Flight),], 
+       aes(x=Broad.Phase.of.Flight, y=Total.Fatal.Injuries)) + 
+  geom_bar(stat="identity")
+
+ntsb.data.work$fatal.id <- 0
+ntsb.data.work$fatal.id[ntsb.data.work$Total.Fatal.Injuries>0] <- 1
+ntsb.data.work$nonfatal.id <- 1
+ntsb.data.work$nonfatal.id[ntsb.data.work$fatal.id>0] <- 0
+table(ntsb.data.work$nonfatal.id, ntsb.data.work$fatal.id)
+
+#Total Fatalities
+sum(Total.Fatal.Injuries, na.rm=TRUE)
+#Fatalities account for by Broad.Phase.of.Flight
+sum(by(Total.Fatal.Injuries, Broad.Phase.of.Flight, sum, na.rm=TRUE))
+#Fatalities in Broad.Phase.of.Flight=NA
+sum(ntsb.data.work[is.na(Broad.Phase.of.Flight),]$Total.Fatal.Injuries, na.rm=TRUE)
+
+#Rates of fatal incidents (fatal/total) by categorical interest list
+
+interest.list <- c("Weather.Condition", "Aircraft.Damage")
+
+
+#Graph fatal acident/total
+
+#would be nice to apply this to multiple categorical variables-- but hope to learn this tomorrow
+a <- aggregate(fatal.id ~ Weather.Condition, data=ntsb.data.work, FUN=mean)
+ggplot(data=a, aes(x=a$Weather.Condition, y=a$fatal.id)) + geom_bar(stat="identity")
+
+#####Begining JSON Files
+
+library(jsonlite)
+library(plyr)
+
+#Bring in all JSON filesfd
+setwd("C:\\Users\\Viola\\Documents\\GitHub\\exercises\\exercise02\\data")
+list.json = list.files(pattern="*.json")
+for (i in 1:length(list.json)) assign(list.json[i], fromJSON(list.json[i]))
+#for (i in 1:length(list.json)) list.json[i] <- list.json[i]$data
+
+#for (i in 1:length(list.json))assign(list.json[i], list.json[i]$data)
+
+test <- fromJSON("NarrativeData_000.json")$data
+###### THIS WORKS BUT CAN'T EXPAND IT
+
+#Append all JSON together
+list.json <- lapply(ls(pattern = "Narrative"), get)
+all.json <- do.call("rbind.fill", list.json)
+
+#Add new information to original dataset
+all.json$Event.Id <- all.json$EventId
+ntsb.data.json <- merge(ntsb.data.work, all.json, by="Event.Id")
+summary(all.json)
+
