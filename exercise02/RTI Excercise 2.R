@@ -462,13 +462,13 @@ ggplot(data=ag.schedule, aes(x=ag.schedule$Schedule, y=ag.schedule$fatal.id)) +
 ag.phase <- aggregate(fatal.id ~ Broad.Phase.of.Flight, data=ntsb.data.work, FUN=mean)
 ggplot(data=ag.phase, aes(x=ag.phase$Broad.Phase.of.Flight, y=ag.phase$fatal.id)) + 
   geom_bar(stat="identity", fill="#66CC99") +
-  labs(x="Schedule", y="Fatal Incident Proportion", title="Fatal Incident Proportion, by Flight Phase") +
+  labs(x="Phase", y="Fatal Incident Proportion", title="Fatal Incident Proportion, by Flight Phase") +
   theme(axis.text.x=element_text(angle=50))
 
 ag.weather <- aggregate(fatal.id ~ Weather.Condition, data=ntsb.data.work, FUN=mean)
 ggplot(data=ag.weather, aes(x=ag.weather$Weather.Condition, y=ag.weather$fatal.id)) + 
   geom_bar(stat="identity", fill="#66CC99") +
-  labs(x="Schedule", y="Fatal Incident Proportion", title="Fatal Incident Proportion, by Weather") +
+  labs(x="Weather", y="Fatal Incident Proportion", title="Fatal Incident Proportion, by Weather") +
   theme(axis.text.x=element_text(angle=50))
 
 #---------- BEGIN Json PROGRAM -------------
