@@ -527,3 +527,4 @@ word.freq=function(x) {
 text.schedule <- by(ntsb.data.json$probable_cause, ntsb.data.json$Schedule, word.freq)
 text.phase <- by(ntsb.data.json$probable_cause, ntsb.data.json$Broad.Phase.of.Flight, word.freq)
 text.weather <- by(ntsb.data.json$probable_cause, ntsb.data.json$Weather.Condition, word.freq)
+text.year <- by(ntsb.data.json$probable_cause, ntsb.data.json$Year, word.freq)
