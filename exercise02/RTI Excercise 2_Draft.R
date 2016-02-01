@@ -1,13 +1,7 @@
-#######################################################################
-########Viola Glenn -- RTI Research Data Science Excercise 02#########
-#####################################################################
+require(ggplot2)
 
-###########CODE BEGINS WITH PROGRAM WRITTEN BY AIRSAFE.COM##########
-
-#Using code constructed by AirSafe.com to: 
-#import + QA + prelim descriptives on NTSB XML dataset
-#Full report including Git is saved here: 
-#http://www.airsafe.com/analyze/ntsb.database.html
+#Viola here --- Using code constructed by AirSafe.com to import + QA + prelim descriptives on NTSB XML dataset
+#Full report including Git is saved here: http://www.airsafe.com/analyze/ntsb.database.html
 
 #---------- BEGIN AIRSAFE PROGRAM -------------
   
@@ -386,72 +380,75 @@ sort(table(fatal.df$State.code), decreasing=TRUE)
 
 #---------- END AIRSAFE PROGRAM -------------
 
-#Load required packages for import, exploration, text 
+#Ideas:
+#Normalize fatalities/event and fatal event/event -- would be nice to do pop. w/o time constraint
+#by state, day of week, month, year
+#normalize by Total.Fatal.Injuries, Total.Serious.Injuries, Total.Minor.Injuries, Total.Uninjured
 
-library(XML)
-library(jsonlite)
-library(plyr)
-library(tm)
-
-#Viola Analysis Step 1:
-#Visual inspection of categorical variables which are observable or controllable
-#by average air traveler 
+#Let's look at some tabulations that may be of interest: categorical vars
 
 #Convert all character variables to factors for easier analysis
 ntsb.data.work <- as.data.frame(unclass(ntsb.data))
-
+#Quick first look at where we have enough data for quick reporting-- again, given time constraint
 summary(ntsb.data.work)
 attach(ntsb.data.work) 
-#Nominate variables for further investigation: 
-#Investigation.Type, Aircraft.Category, Make, Amateur.Built, Number.of.Engines, 
-#Broad.Phase.of.Flight, Weather.Condition
-
-#Total Events by Nominated variable category
+#Nominate: Investigation.Type (or filter by- overlaps w/ injury.severity), Aircraft.Category, Make, Amateur.Built, Number.of.Engines, Broad.Phase.of.Flight, Weather.Condition
+#Bar graphs to explore spread in these nominated variables
+#Events
 par(mfrow=c(3,3))
-sapply(ntsb.data.work[ntsb.data.work$Year>=1982, 
-         c("Investigation.Type","Year", "Month", "Weekday",  
-            "Aircraft.Category", "Amateur.Built", "Number.of.Engines", 
-            "Engine.Type", "Schedule", "Purpose.of.Flight", 
-            "Broad.Phase.of.Flight", "Weather.Condition")], function(x)
-         barplot(sort(table(x), decreasing=TRUE), 
-            col="dodgerblue", ylab="Events", 
-            cex.names=0.7, las=2))
-
+sapply(ntsb.data.work[ntsb.data.work$Year>=1982, c("Investigation.Type","Year", "Month", "Weekday",  
+                                                   "Aircraft.Category", "Amateur.Built", "Number.of.Engines", 
+                                                   "Engine.Type", "Schedule", "Purpose.of.Flight", 
+                                                   "Broad.Phase.of.Flight", "Weather.Condition")], function(x)
+                      barplot(sort(table(x), decreasing=TRUE), 
+                              col="dodgerblue", ylab="Events", 
+                              cex.names=0.7, las=2))
 detach(ntsb.data.work)
 attach(fatal.df)
 
-#Total FATAL Events by Nominated variable category 
-#I am interested in where these differ, will focus on fatal events going forward
 par(mfrow=c(3,3))
 sapply(fatal.df[fatal.df$Year>=1982, 
-          c("Investigation.Type","Year", "Month", "Weekday",  
-            "Aircraft.Category", "Amateur.Built", "Number.of.Engines", 
-            "Engine.Type", "Schedule", "Purpose.of.Flight", 
-            "Broad.Phase.of.Flight", "Weather.Condition")], function(x)
-          barplot(sort(table(x), decreasing=TRUE), 
-            col="darkturquoise", ylab="Fatal Events",
-            cex.names=0.7, las=2)) 
+                c("Investigation.Type","Year", "Month", "Weekday",  
+                  "Aircraft.Category", "Amateur.Built", "Number.of.Engines", 
+                  "Engine.Type", "Schedule", "Purpose.of.Flight", 
+                  "Broad.Phase.of.Flight", "Weather.Condition")], function(x)
+                                         barplot(sort(table(x), decreasing=TRUE), 
+                                         col="darkturquoise", ylab="Fatal Events",
+                                         cex.names=0.7, las=2)) 
 
 
 #Largest differences in total events vs. fatal events occurs:
-# Schedule, Broad.Phase.of.Flight, Weather.Condition 
+# Schedule, Broad.Phase.of.Flight, Weather.Condition Variables
 # Nominate these for further investigation
+
 
 attach(ntsb.data.work)
 
-#Create an indicator variable to flag fatal incidents 
-#This will allow for the calculation of percent of incidents with at least 1 fatality
+#ggplot(data=ntsb.data.work[!is.na(Broad.Phase.of.Flight),], 
+ #      aes(x=Broad.Phase.of.Flight, y=Total.Fatal.Injuries)) + 
+#  geom_bar(stat="identity")
+
 ntsb.data.work$fatal.id <- 0
 ntsb.data.work$fatal.id[ntsb.data.work$Total.Fatal.Injuries>0] <- 1
-
-#QA variable created above (fatal.id)- PASS
 #ntsb.data.work$nonfatal.id <- 1
 #ntsb.data.work$nonfatal.id[ntsb.data.work$fatal.id>0] <- 0
 #table(ntsb.data.work$nonfatal.id, ntsb.data.work$fatal.id)
 
-#Rates of fatal incidents (fatal incidents/total incidents) for nominated variables
+#Total Fatalities
+#sum(Total.Fatal.Injuries, na.rm=TRUE)
+#Fatalities account for by Broad.Phase.of.Flight
+#sum(by(Total.Fatal.Injuries, Broad.Phase.of.Flight, sum, na.rm=TRUE))
+#Fatalities in Broad.Phase.of.Flight=NA
+#sum(ntsb.data.work[is.na(Broad.Phase.of.Flight),]$Total.Fatal.Injuries, na.rm=TRUE)
 
-#NOTE: Would optimize below w/ more time
+#Rates of fatal incidents (fatal/total) by categorical interest list
+
+interest.list <- c("Weather.Condition", "Aircraft.Damage")
+
+
+#Graph fatal acident/total
+
+#would be nice to apply this to multiple categorical variables-- but hope to learn this tomorrow
 
 ag.schedule <- aggregate(fatal.id ~ Schedule, data=ntsb.data.work, FUN=mean)
 ggplot(data=ag.schedule, aes(x=ag.schedule$Schedule, y=ag.schedule$fatal.id)) + geom_bar(stat="identity")
@@ -462,43 +459,122 @@ ggplot(data=ag.phase, aes(x=ag.phase$Broad.Phase.of.Flight, y=ag.phase$fatal.id)
 ag.weather <- aggregate(fatal.id ~ Weather.Condition, data=ntsb.data.work, FUN=mean)
 ggplot(data=ag.weather, aes(x=ag.weather$Weather.Condition, y=ag.weather$fatal.id)) + geom_bar(stat="identity")
 
-#---------- BEGIN Json PROGRAM -------------
-#The following section loads 144 individual .json files with additional
-#narrative text and Event.id to match above data. It then performs some
-#basic text analysis using package tm.
+#Just a simple by? Harder to plot-- aggregate gives us a nice dataframe
 
+#by(ntsb.data.work$fatal.id, ntsb.data.work$Weather.Condition, mean)
 
-#Import each JSON file from working directory
+#Let's try to use rcomdr's numsummary for that
+#library(Rcmdr)
+#library(dplyr)
+
+#attach(ntsb.data.work)
+#numSummary(fatal.id, statistics="mean", groups=Month)
+#But how do we apply numSummary to multiple groups?
+
+# or this ? x.dt[,lapply(.SD,mean),by=sample]
+
+#####Begining JSON Files
+
+library(jsonlite)
+library(plyr)
+
+#Bring in all JSON filesfd
 setwd("C:\\Users\\Viola\\Documents\\GitHub\\exercises\\exercise02\\data")
 list.json = list.files(pattern="*.json")
 for (i in 1:length(list.json)) assign(list.json[i], fromJSON(list.json[i]))
 
-#NOTE: I've not been able to outline an approach to convert all .json files
-#to a single dataframe for analysis. Below are 3 options to convert a single
-#nested item to the appropriate dataframe.
-
-##** Remaining analysis will use a single JSON file to outline procedure.
-
 test <- fromJSON("NarrativeData_000.json")$data
 test2 <- as.data.frame(NarrativeData_000.json$data)
-test3 <- unnest(NarrativeData_000.json) #in library(tidyr)
+test3 <- unnest(NarrativeData_000.json)
+###### THIS WORKS BUT CAN'T EXPAND IT
+
+#for (i in 1:length(list.json)) list.json[i] <- list.json[i]$data
+
+#for (i in 1:length(list.json))assign(list.json[i], 
+ #            as.data.frame(list.json[i]$data]))
+
+#tidyr unnest?
+#for (i in 1:length(list.json)) assign(list.json[i], unnest(list.json[i]))
+#function of bound unnested?
+#all.json <- do.call("rbind.fill", unnest(list.json))
+#all.json <- do.call("unnest", list.json)
+
+#make a new list that contains $data
+
+#list.json2 <- paste(list.json, "$data", sep="")
+#for (i in 1:length(list.json2)) assign(list.json[i], as.data.frame(list.json2[i]))
+
+#use an rbind to bind all at $data
+#test2 <- do.call("as.data.frame", list.json2)
+
+#unnest=function(x){
+ # x <- fromJSON(x)$data
+#}
+
+#unnest=function(x){
+ # x_new <- x$data
+#}
+
+#unnest("NarrativeData_10499.json")
+
+#Functions not working
+
+#combine all lists and then convert to dataframe - nope
+#outlist <- list(NarrativeData_000.json)
+#outlist <- append(outlist,list(NarrativeData_499.json))
+#test2 <- as.data.frame(outlist)
 
 #Append all JSON together
-#NOTE: Again - This is only pulling 1 JSON file currently due to issue noted above
 list.json <- lapply(ls(pattern = "Narrative"), get)
 all.json <- do.call("rbind.fill", list.json)
+
+#test2 <- do.call("rbind.fill", as.data.frame(list.json$data))
 
 #Add new information to original dataset
 all.json$Event.Id <- all.json$EventId
 ntsb.data.json <- merge(ntsb.data.work, all.json, by="Event.Id")
 
-#Begin frequency counts
-#Many more ideas for how to implement this, but time does not allow
 
+#let's pretend we have all json in ntsb.data.json-- work with test for now
 library(tm)
 
-#Pool all words from narrative fields, tokenize, 
-#and calculate proportion of total with word.freq function
+#original function-- needs to be optimized
+#word.freq=function(x,y) {
+ #   alldocs <- paste(ntsb.data.json$probable_cause[x==y], collapse=" ")
+  #  corpus <- Corpus(VectorSource(alldocs))
+   # corpus <- tm_map(corpus, content_transformer(tolower))
+    #corpus <- tm_map(corpus, removePunctuation)
+    #corpus <- tm_map(corpus, stripWhitespace)
+    #corpus <- tm_map(corpus, removeWords, stopwords(kind="en"))
+    #dtm <- DocumentTermMatrix(corpus)
+    #dtm2 <- as.matrix(dtm)
+    #frequency <- colSums(dtm2)
+    #frequency <- sort(frequency, decreasing=TRUE)
+#}
+
+#word.freq(Investigation.Type, "Accident")
+
+
+#Try w/ for loop
+#for (i in 1:length(list.json)) assign(list.json[i], fromJSON(list.json[i]))
+#object <- levels(Investigation.Type)
+
+#levs <- levels(Investigation.Type)
+#for (i in 1:length(levs)) 
+ # alldocs <- paste(ntsb.data.json$probable_cause[ntsb.data.json$Investigation.Type==levs[1]], collapse=" ")
+  #  corpus <- Corpus(VectorSource(alldocs))
+   # corpus <- tm_map(corpus, content_transformer(tolower))
+    #corpus <- tm_map(corpus, removePunctuation)
+    #corpus <- tm_map(corpus, stripWhitespace)
+    #corpus <- tm_map(corpus, removeWords, stopwords(kind="en"))
+    #dtm <- DocumentTermMatrix(corpus)
+    #dtm2 <- as.matrix(dtm)
+    #frequency <- colSums(dtm2)
+    #frequency <- sort(frequency, decreasing=TRUE)
+    #i <- frequency
+#}
+
+#Try w/ by statement
 
 word.freq=function(x) {
   alldocs <- paste(x, collapse=" ")
@@ -514,7 +590,7 @@ word.freq=function(x) {
   head(frequency, 10)/sum(frequency)
 }
 
-#Apply word.freq to nominated variables 
+#Do probable cause vary by vars of interest?#
 text.schedule <- by(ntsb.data.json$probable_cause, ntsb.data.json$Schedule, word.freq)
 text.phase <- by(ntsb.data.json$probable_cause, ntsb.data.json$Broad.Phase.of.Flight, word.freq)
 text.weather <- by(ntsb.data.json$probable_cause, ntsb.data.json$Weather.Condition, word.freq)
